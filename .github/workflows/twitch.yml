@@ -1,0 +1,36 @@
+name: Twitch to M3U
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install yt-dlp
+        run: pip install yt-dlp
+      
+      - name: Create M3U playlist
+        run: |
+          echo "#EXTM3U" > playlist.m3u
+          echo "$(date)" >> playlist.m3u
+          URL=$(yt-dlp -g https://www.twitch.tv/siculiananelweb 2>/dev/null || echo "")
+          if [ -n "$URL" ]; then
+            echo "#EXTINF:-1, siculiananelweb" >> playlist.m3u
+            echo "$URL" >> playlist.m3u
+          else
+            echo "#EXTINF:-1, OFFLINE - siculiananelweb" >> playlist.m3u
+            echo "http://example.com/offline" >> playlist.m3u
+          fi
+      
+      - name: Push playlist
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add playlist.m3u
+          git commit -m "Update playlist" || exit 0
+          git push
